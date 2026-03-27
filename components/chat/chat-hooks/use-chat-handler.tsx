@@ -272,6 +272,9 @@ export const useChatHandler = () => {
 
       let generatedText = ""
 
+      console.log("selectedTools:", selectedTools)
+      console.log("selectedTools.length:", selectedTools.length)
+
       if (selectedTools.length > 0) {
         setToolInUse("Tools")
 

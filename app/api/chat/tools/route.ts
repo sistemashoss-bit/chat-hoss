@@ -7,7 +7,15 @@ import OpenAI from "openai"
 import { ChatCompletionCreateParamsBase } from "openai/resources/chat/completions.mjs"
 
 export async function POST(request: Request) {
+  console.log("=== /api/chat/tools called ===")
+
   const json = await request.json()
+  console.log("Received request with:", {
+    chatSettings: json.chatSettings,
+    messagesCount: json.messages?.length,
+    selectedToolsCount: json.selectedTools?.length
+  })
+
   const { chatSettings, messages, selectedTools } = json as {
     chatSettings: ChatSettings
     messages: any[]
@@ -30,9 +38,14 @@ export async function POST(request: Request) {
 
     for (const selectedTool of selectedTools) {
       try {
+        console.log("Processing tool:", selectedTool.name)
+        console.log("Tool schema:", selectedTool.schema)
+
         const convertedSchema = await openapiToFunctions(
           JSON.parse(selectedTool.schema as string)
         )
+        console.log("Converted schema:", convertedSchema)
+
         const tools = convertedSchema.functions || []
         allTools = allTools.concat(tools)
 
