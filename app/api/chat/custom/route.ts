@@ -1,5 +1,6 @@
 import { Database } from "@/supabase/types"
 import { ChatSettings } from "@/types"
+import { getSupabaseAdminKey, getSupabaseUrl } from "@/lib/supabase/env"
 import { createClient } from "@supabase/supabase-js"
 import { OpenAIStream, StreamingTextResponse } from "ai"
 import { ServerRuntime } from "next"
@@ -18,8 +19,8 @@ export async function POST(request: Request) {
 
   try {
     const supabaseAdmin = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      getSupabaseUrl(),
+      getSupabaseAdminKey()
     )
 
     const { data: customModel, error } = await supabaseAdmin

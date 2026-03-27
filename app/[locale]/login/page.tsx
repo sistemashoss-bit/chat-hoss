@@ -2,7 +2,12 @@ import { Brand } from "@/components/ui/brand"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { SubmitButton } from "@/components/ui/submit-button"
+import {
+  isEmailAllowedByWhitelist,
+  parseWhitelistFromEnvStrings
+} from "@/lib/auth/whitelist"
 import { createClient } from "@/lib/supabase/server"
+import { getSupabasePublicKey, getSupabaseUrl } from "@/lib/supabase/env"
 import { Database } from "@/supabase/types"
 import { createServerClient } from "@supabase/ssr"
 import { get } from "@vercel/edge-config"
@@ -21,8 +26,8 @@ export default async function Login({
 }) {
   const cookieStore = cookies()
   const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    getSupabaseUrl(),
+    getSupabasePublicKey(),
     {
       cookies: {
         get(name: string) {
@@ -56,6 +61,22 @@ export default async function Login({
     const cookieStore = cookies()
     const supabase = createClient(cookieStore)
 
+    const emailDomainWhitelistPatternsString = await getEnvVarOrEdgeConfigValue(
+      "EMAIL_DOMAIN_WHITELIST"
+    )
+    const emailWhitelistPatternsString =
+      await getEnvVarOrEdgeConfigValue("EMAIL_WHITELIST")
+    const whitelistConfig = parseWhitelistFromEnvStrings({
+      emailDomainWhitelistPatternsString,
+      emailWhitelistPatternsString
+    })
+
+    if (!isEmailAllowedByWhitelist(email, whitelistConfig)) {
+      return redirect(
+        `/login?message=Email ${email} is not allowed to sign in.`
+      )
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -63,6 +84,14 @@ export default async function Login({
 
     if (error) {
       return redirect(`/login?message=${error.message}`)
+    }
+
+    // Defensive: if the auth user email differs from input, enforce whitelist on actual account.
+    if (!isEmailAllowedByWhitelist(data.user.email, whitelistConfig)) {
+      await supabase.auth.signOut()
+      return redirect(
+        `/login?message=Email ${data.user.email} is not allowed to sign in.`
+      )
     }
 
     const { data: homeWorkspace, error: homeWorkspaceError } = await supabase
@@ -99,24 +128,18 @@ export default async function Login({
     const emailDomainWhitelistPatternsString = await getEnvVarOrEdgeConfigValue(
       "EMAIL_DOMAIN_WHITELIST"
     )
-    const emailDomainWhitelist = emailDomainWhitelistPatternsString?.trim()
-      ? emailDomainWhitelistPatternsString?.split(",")
-      : []
     const emailWhitelistPatternsString =
       await getEnvVarOrEdgeConfigValue("EMAIL_WHITELIST")
-    const emailWhitelist = emailWhitelistPatternsString?.trim()
-      ? emailWhitelistPatternsString?.split(",")
-      : []
+    const whitelistConfig = parseWhitelistFromEnvStrings({
+      emailDomainWhitelistPatternsString,
+      emailWhitelistPatternsString
+    })
 
     // If there are whitelist patterns, check if the email is allowed to sign up
-    if (emailDomainWhitelist.length > 0 || emailWhitelist.length > 0) {
-      const domainMatch = emailDomainWhitelist?.includes(email.split("@")[1])
-      const emailMatch = emailWhitelist?.includes(email)
-      if (!domainMatch && !emailMatch) {
-        return redirect(
-          `/login?message=Email ${email} is not allowed to sign up.`
-        )
-      }
+    if (!isEmailAllowedByWhitelist(email, whitelistConfig)) {
+      return redirect(
+        `/login?message=Email ${email} is not allowed to sign up.`
+      )
     }
 
     const cookieStore = cookies()

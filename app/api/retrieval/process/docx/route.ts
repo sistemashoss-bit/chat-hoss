@@ -1,6 +1,7 @@
 import { generateLocalEmbedding } from "@/lib/generate-local-embedding"
 import { processDocX } from "@/lib/retrieval/processing"
 import { checkApiKey, getServerProfile } from "@/lib/server/server-chat-helpers"
+import { getSupabaseAdminKey, getSupabaseUrl } from "@/lib/supabase/env"
 import { Database } from "@/supabase/types"
 import { FileItemChunk } from "@/types"
 import { createClient } from "@supabase/supabase-js"
@@ -18,8 +19,8 @@ export async function POST(req: Request) {
 
   try {
     const supabaseAdmin = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      getSupabaseUrl(),
+      getSupabaseAdminKey()
     )
 
     const profile = await getServerProfile()

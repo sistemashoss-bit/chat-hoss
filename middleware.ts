@@ -1,4 +1,8 @@
 import { createClient } from "@/lib/supabase/middleware"
+import {
+  isEmailAllowedByWhitelist,
+  parseWhitelistFromEnvStrings
+} from "@/lib/auth/whitelist"
 import { i18nRouter } from "next-i18n-router"
 import { NextResponse, type NextRequest } from "next/server"
 import i18nConfig from "./i18nConfig"
@@ -11,6 +15,20 @@ export async function middleware(request: NextRequest) {
     const { supabase, response } = createClient(request)
 
     const session = await supabase.auth.getSession()
+    const userEmail = session.data.session?.user.email
+
+    const whitelistConfig = parseWhitelistFromEnvStrings({
+      emailDomainWhitelistPatternsString: process.env.EMAIL_DOMAIN_WHITELIST,
+      emailWhitelistPatternsString: process.env.EMAIL_WHITELIST
+    })
+
+    // If whitelists are configured, enforce them on every request (defense-in-depth).
+    if (session.data.session && !isEmailAllowedByWhitelist(userEmail, whitelistConfig)) {
+      await supabase.auth.signOut()
+      return NextResponse.redirect(
+        new URL(`/login?message=Email ${userEmail} is not allowed.`, request.url)
+      )
+    }
 
     const redirectToChat = session && request.nextUrl.pathname === "/"
 
