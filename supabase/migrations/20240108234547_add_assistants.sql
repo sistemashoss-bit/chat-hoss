@@ -34,21 +34,31 @@ CREATE TABLE IF NOT EXISTS assistants (
 
 -- INDEXES --
 
-CREATE INDEX assistants_user_id_idx ON assistants(user_id);
+CREATE INDEX IF NOT EXISTS assistants_user_id_idx ON assistants(user_id);
 
 -- RLS --
 
 ALTER TABLE assistants ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow full access to own assistants"
-    ON assistants
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
+DO $$
+BEGIN
+  CREATE POLICY "Allow full access to own assistants"
+      ON assistants
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Allow view access to non-private assistants"
-    ON assistants
-    FOR SELECT
-    USING (sharing <> 'private');
+DO $$
+BEGIN
+  CREATE POLICY "Allow view access to non-private assistants"
+      ON assistants
+      FOR SELECT
+      USING (sharing <> 'private');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- FUNCTIONS --
 
@@ -79,11 +89,13 @@ $$;
 
 -- TRIGGERS --
 
+DROP TRIGGER IF EXISTS update_assistants_updated_at ON public.assistants;
 CREATE TRIGGER update_assistants_updated_at
 BEFORE UPDATE ON assistants
 FOR EACH ROW
 EXECUTE PROCEDURE update_updated_at_column();
 
+DROP TRIGGER IF EXISTS delete_old_assistant_image ON public.assistants;
 CREATE TRIGGER delete_old_assistant_image
 AFTER DELETE ON assistants
 FOR EACH ROW
@@ -91,7 +103,9 @@ EXECUTE PROCEDURE delete_old_assistant_image();
 
 -- STORAGE --
 
-INSERT INTO storage.buckets (id, name, public) VALUES ('assistant_images', 'assistant_images', false);
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('assistant_images', 'assistant_images', false)
+ON CONFLICT (id) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION public.non_private_assistant_exists(p_name text)
 RETURNS boolean
@@ -105,21 +119,41 @@ AS $$
     );
 $$;
 
-CREATE POLICY "Allow public read access on non-private assistant images"
-    ON storage.objects FOR SELECT TO public
-    USING (bucket_id = 'assistant_images' AND public.non_private_assistant_exists(name));
+DO $$
+BEGIN
+  CREATE POLICY "Allow public read access on non-private assistant images"
+      ON storage.objects FOR SELECT TO public
+      USING (bucket_id = 'assistant_images' AND public.non_private_assistant_exists(name));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Allow insert access to own assistant images"
-    ON storage.objects FOR INSERT TO authenticated
-    WITH CHECK (bucket_id = 'assistant_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+DO $$
+BEGIN
+  CREATE POLICY "Allow insert access to own assistant images"
+      ON storage.objects FOR INSERT TO authenticated
+      WITH CHECK (bucket_id = 'assistant_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Allow update access to own assistant images"
-    ON storage.objects FOR UPDATE TO authenticated
-    USING (bucket_id = 'assistant_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+DO $$
+BEGIN
+  CREATE POLICY "Allow update access to own assistant images"
+      ON storage.objects FOR UPDATE TO authenticated
+      USING (bucket_id = 'assistant_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Allow delete access to own assistant images"
-    ON storage.objects FOR DELETE TO authenticated
-    USING (bucket_id = 'assistant_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+DO $$
+BEGIN
+  CREATE POLICY "Allow delete access to own assistant images"
+      ON storage.objects FOR DELETE TO authenticated
+      USING (bucket_id = 'assistant_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 --------------- ASSISTANT WORKSPACES ---------------
 
@@ -140,21 +174,27 @@ CREATE TABLE IF NOT EXISTS assistant_workspaces (
 
 -- INDEXES --
 
-CREATE INDEX assistant_workspaces_user_id_idx ON assistant_workspaces(user_id);
-CREATE INDEX assistant_workspaces_assistant_id_idx ON assistant_workspaces(assistant_id);
-CREATE INDEX assistant_workspaces_workspace_id_idx ON assistant_workspaces(workspace_id);
+CREATE INDEX IF NOT EXISTS assistant_workspaces_user_id_idx ON assistant_workspaces(user_id);
+CREATE INDEX IF NOT EXISTS assistant_workspaces_assistant_id_idx ON assistant_workspaces(assistant_id);
+CREATE INDEX IF NOT EXISTS assistant_workspaces_workspace_id_idx ON assistant_workspaces(workspace_id);
 
 -- RLS --
 
 ALTER TABLE assistant_workspaces ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow full access to own assistant_workspaces"
-    ON assistant_workspaces
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
+DO $$
+BEGIN
+  CREATE POLICY "Allow full access to own assistant_workspaces"
+      ON assistant_workspaces
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- TRIGGERS --
 
+DROP TRIGGER IF EXISTS update_assistant_workspaces_updated_at ON public.assistant_workspaces;
 CREATE TRIGGER update_assistant_workspaces_updated_at
 BEFORE UPDATE ON assistant_workspaces 
 FOR EACH ROW 

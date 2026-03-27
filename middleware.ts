@@ -18,8 +18,11 @@ export async function middleware(request: NextRequest) {
     const userEmail = session.data.session?.user.email
 
     const whitelistConfig = parseWhitelistFromEnvStrings({
-      emailDomainWhitelistPatternsString: process.env.EMAIL_DOMAIN_WHITELIST,
-      emailWhitelistPatternsString: process.env.EMAIL_WHITELIST
+      emailDomainWhitelistPatternsString:
+        process.env.EMAIL_DOMAIN_WHITELIST ||
+        process.env.NEXT_PUBLIC_EMAIL_DOMAIN_WHITELIST,
+      emailWhitelistPatternsString:
+        process.env.EMAIL_WHITELIST || process.env.NEXT_PUBLIC_EMAIL_WHITELIST
     })
 
     // If whitelists are configured, enforce them on every request (defense-in-depth).

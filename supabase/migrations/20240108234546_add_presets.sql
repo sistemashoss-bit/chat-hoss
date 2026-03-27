@@ -33,24 +33,35 @@ CREATE TABLE IF NOT EXISTS presets (
 
 -- INDEXES --
 
-CREATE INDEX presets_user_id_idx ON presets(user_id);
+CREATE INDEX IF NOT EXISTS presets_user_id_idx ON presets(user_id);
 
 -- RLS --
 
 ALTER TABLE presets ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow full access to own presets"
-    ON presets
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
+DO $$
+BEGIN
+  CREATE POLICY "Allow full access to own presets"
+      ON presets
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Allow view access to non-private presets"
-    ON presets
-    FOR SELECT
-    USING (sharing <> 'private');
+DO $$
+BEGIN
+  CREATE POLICY "Allow view access to non-private presets"
+      ON presets
+      FOR SELECT
+      USING (sharing <> 'private');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- TRIGGERS --
 
+DROP TRIGGER IF EXISTS update_presets_updated_at ON public.presets;
 CREATE TRIGGER update_presets_updated_at
 BEFORE UPDATE ON presets 
 FOR EACH ROW 
@@ -75,21 +86,27 @@ CREATE TABLE IF NOT EXISTS preset_workspaces (
 
 -- INDEXES --
 
-CREATE INDEX preset_workspaces_user_id_idx ON preset_workspaces(user_id);
-CREATE INDEX preset_workspaces_preset_id_idx ON preset_workspaces(preset_id);
-CREATE INDEX preset_workspaces_workspace_id_idx ON preset_workspaces(workspace_id);
+CREATE INDEX IF NOT EXISTS preset_workspaces_user_id_idx ON preset_workspaces(user_id);
+CREATE INDEX IF NOT EXISTS preset_workspaces_preset_id_idx ON preset_workspaces(preset_id);
+CREATE INDEX IF NOT EXISTS preset_workspaces_workspace_id_idx ON preset_workspaces(workspace_id);
 
 -- RLS --
 
 ALTER TABLE preset_workspaces ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow full access to own preset_workspaces"
-    ON preset_workspaces
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
+DO $$
+BEGIN
+  CREATE POLICY "Allow full access to own preset_workspaces"
+      ON preset_workspaces
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- TRIGGERS --
 
+DROP TRIGGER IF EXISTS update_preset_workspaces_updated_at ON public.preset_workspaces;
 CREATE TRIGGER update_preset_workspaces_updated_at
 BEFORE UPDATE ON preset_workspaces 
 FOR EACH ROW 

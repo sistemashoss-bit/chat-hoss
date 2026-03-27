@@ -5,7 +5,9 @@ ADD COLUMN image_path TEXT DEFAULT '' NOT NULL CHECK (char_length(image_path) <=
 
 -- STORAGE --
 
-INSERT INTO storage.buckets (id, name, public) VALUES ('workspace_images', 'workspace_images', false);
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('workspace_images', 'workspace_images', false)
+ON CONFLICT (id) DO NOTHING;
 
 -- FUNCTIONS --
 
@@ -36,6 +38,7 @@ $$;
 
 -- TRIGGERS --
 
+DROP TRIGGER IF EXISTS delete_old_workspace_image ON public.workspaces;
 CREATE TRIGGER delete_old_workspace_image
 AFTER DELETE ON workspaces
 FOR EACH ROW
@@ -55,18 +58,38 @@ AS $$
     );
 $$;
 
-CREATE POLICY "Allow public read access on non-private workspace images"
-    ON storage.objects FOR SELECT TO public
-    USING (bucket_id = 'workspace_images' AND public.non_private_workspace_exists(name));
+DO $$
+BEGIN
+  CREATE POLICY "Allow public read access on non-private workspace images"
+      ON storage.objects FOR SELECT TO public
+      USING (bucket_id = 'workspace_images' AND public.non_private_workspace_exists(name));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Allow insert access to own workspace images"
-    ON storage.objects FOR INSERT TO authenticated
-    WITH CHECK (bucket_id = 'workspace_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+DO $$
+BEGIN
+  CREATE POLICY "Allow insert access to own workspace images"
+      ON storage.objects FOR INSERT TO authenticated
+      WITH CHECK (bucket_id = 'workspace_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Allow update access to own workspace images"
-    ON storage.objects FOR UPDATE TO authenticated
-    USING (bucket_id = 'workspace_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+DO $$
+BEGIN
+  CREATE POLICY "Allow update access to own workspace images"
+      ON storage.objects FOR UPDATE TO authenticated
+      USING (bucket_id = 'workspace_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Allow delete access to own workspace images"
-    ON storage.objects FOR DELETE TO authenticated
-    USING (bucket_id = 'workspace_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+DO $$
+BEGIN
+  CREATE POLICY "Allow delete access to own workspace images"
+      ON storage.objects FOR DELETE TO authenticated
+      USING (bucket_id = 'workspace_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;

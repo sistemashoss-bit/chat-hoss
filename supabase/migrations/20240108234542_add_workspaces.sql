@@ -32,21 +32,31 @@ CREATE TABLE IF NOT EXISTS workspaces (
 
 -- INDEXES --
 
-CREATE INDEX idx_workspaces_user_id ON workspaces (user_id);
+CREATE INDEX IF NOT EXISTS idx_workspaces_user_id ON workspaces (user_id);
 
 -- RLS --
 
 ALTER TABLE workspaces ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow full access to own workspaces"
-    ON workspaces
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
+DO $$
+BEGIN
+  CREATE POLICY "Allow full access to own workspaces"
+      ON workspaces
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Allow view access to non-private workspaces"
-    ON workspaces
-    FOR SELECT
-    USING (sharing <> 'private');
+DO $$
+BEGIN
+  CREATE POLICY "Allow view access to non-private workspaces"
+      ON workspaces
+      FOR SELECT
+      USING (sharing <> 'private');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- FUNCTIONS --
 
@@ -63,6 +73,7 @@ $$ LANGUAGE plpgsql;
 
 -- TRIGGERS --
 
+DROP TRIGGER IF EXISTS update_workspaces_updated_at ON public.workspaces;
 CREATE TRIGGER update_workspaces_updated_at
 BEFORE UPDATE ON workspaces
 FOR EACH ROW
@@ -79,6 +90,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS prevent_update_of_home_field ON public.workspaces;
 CREATE TRIGGER prevent_update_of_home_field
 BEFORE UPDATE ON workspaces
 FOR EACH ROW
@@ -86,6 +98,6 @@ EXECUTE PROCEDURE prevent_home_field_update();
 
 -- INDEXES --
 
-CREATE UNIQUE INDEX idx_unique_home_workspace_per_user 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_home_workspace_per_user 
 ON workspaces(user_id) 
 WHERE is_home;

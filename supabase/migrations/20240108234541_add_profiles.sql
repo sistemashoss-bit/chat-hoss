@@ -39,16 +39,21 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 -- INDEXES --
 
-CREATE INDEX idx_profiles_user_id ON profiles (user_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles (user_id);
 
 -- RLS --
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow full access to own profiles"
-    ON profiles
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
+DO $$
+BEGIN
+  CREATE POLICY "Allow full access to own profiles"
+      ON profiles
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- FUNCTIONS --
 
@@ -79,6 +84,7 @@ $$;
 
 -- TRIGGERS --
 
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
 CREATE TRIGGER update_profiles_updated_at
 BEFORE UPDATE ON profiles
 FOR EACH ROW
@@ -140,6 +146,10 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Make re-runs safe (e.g. if you already created these manually)
+DROP TRIGGER IF EXISTS create_profile_and_workspace_trigger ON auth.users;
+DROP TRIGGER IF EXISTS delete_old_profile_image ON public.profiles;
+
 CREATE TRIGGER create_profile_and_workspace_trigger
 AFTER INSERT ON auth.users
 FOR EACH ROW
@@ -152,20 +162,42 @@ EXECUTE PROCEDURE delete_old_profile_image();
 
 -- STORAGE --
 
-INSERT INTO storage.buckets (id, name, public) VALUES ('profile_images', 'profile_images', true);
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('profile_images', 'profile_images', true)
+ON CONFLICT (id) DO NOTHING;
 
-CREATE POLICY "Allow public read access on profile images"
-    ON storage.objects FOR SELECT
-    USING (bucket_id = 'profile_images');
+DO $$
+BEGIN
+  CREATE POLICY "Allow public read access on profile images"
+      ON storage.objects FOR SELECT
+      USING (bucket_id = 'profile_images');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Allow authenticated insert access to own profile images"
-    ON storage.objects FOR INSERT TO authenticated
-    WITH CHECK (bucket_id = 'profile_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+DO $$
+BEGIN
+  CREATE POLICY "Allow authenticated insert access to own profile images"
+      ON storage.objects FOR INSERT TO authenticated
+      WITH CHECK (bucket_id = 'profile_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Allow authenticated update access to own profile images"
-    ON storage.objects FOR UPDATE TO authenticated
-    USING (bucket_id = 'profile_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+DO $$
+BEGIN
+  CREATE POLICY "Allow authenticated update access to own profile images"
+      ON storage.objects FOR UPDATE TO authenticated
+      USING (bucket_id = 'profile_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Allow authenticated delete access to own profile images"
-    ON storage.objects FOR DELETE TO authenticated
-    USING (bucket_id = 'profile_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+DO $$
+BEGIN
+  CREATE POLICY "Allow authenticated delete access to own profile images"
+      ON storage.objects FOR DELETE TO authenticated
+      USING (bucket_id = 'profile_images' AND (storage.foldername(name))[1] = auth.uid()::text);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;

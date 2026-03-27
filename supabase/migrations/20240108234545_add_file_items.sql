@@ -24,32 +24,43 @@ create table file_items (
 
 -- INDEXES --
 
-CREATE INDEX file_items_file_id_idx ON file_items(file_id);
+CREATE INDEX IF NOT EXISTS file_items_file_id_idx ON file_items(file_id);
 
-CREATE INDEX file_items_embedding_idx ON file_items
+CREATE INDEX IF NOT EXISTS file_items_embedding_idx ON file_items
   USING hnsw (openai_embedding vector_cosine_ops);
 
-CREATE INDEX file_items_local_embedding_idx ON file_items
+CREATE INDEX IF NOT EXISTS file_items_local_embedding_idx ON file_items
   USING hnsw (local_embedding vector_cosine_ops);
 
 -- RLS
 
 ALTER TABLE file_items ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow full access to own file items"
-    ON file_items
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
+DO $$
+BEGIN
+  CREATE POLICY "Allow full access to own file items"
+      ON file_items
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Allow view access to non-private file items"
-    ON file_items
-    FOR SELECT
-    USING (file_id IN (
-        SELECT id FROM files WHERE sharing <> 'private'
-    ));
+DO $$
+BEGIN
+  CREATE POLICY "Allow view access to non-private file items"
+      ON file_items
+      FOR SELECT
+      USING (file_id IN (
+          SELECT id FROM files WHERE sharing <> 'private'
+      ));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- TRIGGERS --
 
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.file_items;
 CREATE TRIGGER update_profiles_updated_at
 BEFORE UPDATE ON file_items
 FOR EACH ROW

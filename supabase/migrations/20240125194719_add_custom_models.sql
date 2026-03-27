@@ -29,24 +29,35 @@ CREATE TABLE IF NOT EXISTS models (
 
 -- INDEXES --
 
-CREATE INDEX models_user_id_idx ON models(user_id);
+CREATE INDEX IF NOT EXISTS models_user_id_idx ON models(user_id);
 
 -- RLS --
 
 ALTER TABLE models ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow full access to own models"
-    ON models
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
+DO $$
+BEGIN
+  CREATE POLICY "Allow full access to own models"
+      ON models
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Allow view access to non-private models"
-    ON models
-    FOR SELECT
-    USING (sharing <> 'private');
+DO $$
+BEGIN
+  CREATE POLICY "Allow view access to non-private models"
+      ON models
+      FOR SELECT
+      USING (sharing <> 'private');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- TRIGGERS --
 
+DROP TRIGGER IF EXISTS update_models_updated_at ON public.models;
 CREATE TRIGGER update_models_updated_at
 BEFORE UPDATE ON models 
 FOR EACH ROW 
@@ -71,21 +82,27 @@ CREATE TABLE IF NOT EXISTS model_workspaces (
 
 -- INDEXES --
 
-CREATE INDEX model_workspaces_user_id_idx ON model_workspaces(user_id);
-CREATE INDEX model_workspaces_model_id_idx ON model_workspaces(model_id);
-CREATE INDEX model_workspaces_workspace_id_idx ON model_workspaces(workspace_id);
+CREATE INDEX IF NOT EXISTS model_workspaces_user_id_idx ON model_workspaces(user_id);
+CREATE INDEX IF NOT EXISTS model_workspaces_model_id_idx ON model_workspaces(model_id);
+CREATE INDEX IF NOT EXISTS model_workspaces_workspace_id_idx ON model_workspaces(workspace_id);
 
 -- RLS --
 
 ALTER TABLE model_workspaces ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow full access to own model_workspaces"
-    ON model_workspaces
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
+DO $$
+BEGIN
+  CREATE POLICY "Allow full access to own model_workspaces"
+      ON model_workspaces
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- TRIGGERS --
 
+DROP TRIGGER IF EXISTS update_model_workspaces_updated_at ON public.model_workspaces;
 CREATE TRIGGER update_model_workspaces_updated_at
 BEFORE UPDATE ON model_workspaces 
 FOR EACH ROW 

@@ -17,21 +17,27 @@ CREATE TABLE IF NOT EXISTS assistant_files (
 
 -- INDEXES --
 
-CREATE INDEX assistant_files_user_id_idx ON assistant_files(user_id);
-CREATE INDEX assistant_files_assistant_id_idx ON assistant_files(assistant_id);
-CREATE INDEX assistant_files_file_id_idx ON assistant_files(file_id);
+CREATE INDEX IF NOT EXISTS assistant_files_user_id_idx ON assistant_files(user_id);
+CREATE INDEX IF NOT EXISTS assistant_files_assistant_id_idx ON assistant_files(assistant_id);
+CREATE INDEX IF NOT EXISTS assistant_files_file_id_idx ON assistant_files(file_id);
 
 -- RLS --
 
 ALTER TABLE assistant_files ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow full access to own assistant_files"
-    ON assistant_files
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
+DO $$
+BEGIN
+  CREATE POLICY "Allow full access to own assistant_files"
+      ON assistant_files
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- TRIGGERS --
 
+DROP TRIGGER IF EXISTS update_assistant_files_updated_at ON public.assistant_files;
 CREATE TRIGGER update_assistant_files_updated_at
 BEFORE UPDATE ON assistant_files 
 FOR EACH ROW 
@@ -56,21 +62,27 @@ CREATE TABLE IF NOT EXISTS assistant_collections (
 
 -- INDEXES --
 
-CREATE INDEX assistant_collections_user_id_idx ON assistant_collections(user_id);
-CREATE INDEX assistant_collections_assistant_id_idx ON assistant_collections(assistant_id);
-CREATE INDEX assistant_collections_collection_id_idx ON assistant_collections(collection_id);
+CREATE INDEX IF NOT EXISTS assistant_collections_user_id_idx ON assistant_collections(user_id);
+CREATE INDEX IF NOT EXISTS assistant_collections_assistant_id_idx ON assistant_collections(assistant_id);
+CREATE INDEX IF NOT EXISTS assistant_collections_collection_id_idx ON assistant_collections(collection_id);
 
 -- RLS --
 
 ALTER TABLE assistant_collections ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow full access to own assistant_collections"
-    ON assistant_collections
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
+DO $$
+BEGIN
+  CREATE POLICY "Allow full access to own assistant_collections"
+      ON assistant_collections
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- TRIGGERS --
 
+DROP TRIGGER IF EXISTS update_assistant_collections_updated_at ON public.assistant_collections;
 CREATE TRIGGER update_assistant_collections_updated_at
 BEFORE UPDATE ON assistant_collections 
 FOR EACH ROW 

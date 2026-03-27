@@ -26,24 +26,35 @@ CREATE TABLE IF NOT EXISTS prompts (
 
 -- INDEXES --
 
-CREATE INDEX prompts_user_id_idx ON prompts(user_id);
+CREATE INDEX IF NOT EXISTS prompts_user_id_idx ON prompts(user_id);
 
 -- RLS --
 
 ALTER TABLE prompts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow full access to own prompts"
-    ON prompts
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
+DO $$
+BEGIN
+  CREATE POLICY "Allow full access to own prompts"
+      ON prompts
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Allow view access to non-private prompts"
-    ON prompts
-    FOR SELECT
-    USING (sharing <> 'private');
+DO $$
+BEGIN
+  CREATE POLICY "Allow view access to non-private prompts"
+      ON prompts
+      FOR SELECT
+      USING (sharing <> 'private');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- TRIGGERS --
 
+DROP TRIGGER IF EXISTS update_prompts_updated_at ON public.prompts;
 CREATE TRIGGER update_prompts_updated_at
 BEFORE UPDATE ON prompts
 FOR EACH ROW
@@ -68,21 +79,27 @@ CREATE TABLE IF NOT EXISTS prompt_workspaces (
 
 -- INDEXES --
 
-CREATE INDEX prompt_workspaces_user_id_idx ON prompt_workspaces(user_id);
-CREATE INDEX prompt_workspaces_prompt_id_idx ON prompt_workspaces(prompt_id);
-CREATE INDEX prompt_workspaces_workspace_id_idx ON prompt_workspaces(workspace_id);
+CREATE INDEX IF NOT EXISTS prompt_workspaces_user_id_idx ON prompt_workspaces(user_id);
+CREATE INDEX IF NOT EXISTS prompt_workspaces_prompt_id_idx ON prompt_workspaces(prompt_id);
+CREATE INDEX IF NOT EXISTS prompt_workspaces_workspace_id_idx ON prompt_workspaces(workspace_id);
 
 -- RLS --
 
 ALTER TABLE prompt_workspaces ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow full access to own prompt_workspaces"
-    ON prompt_workspaces
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
+DO $$
+BEGIN
+  CREATE POLICY "Allow full access to own prompt_workspaces"
+      ON prompt_workspaces
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- TRIGGERS --
 
+DROP TRIGGER IF EXISTS update_prompt_workspaces_updated_at ON public.prompt_workspaces;
 CREATE TRIGGER update_prompt_workspaces_updated_at
 BEFORE UPDATE ON prompt_workspaces 
 FOR EACH ROW 
