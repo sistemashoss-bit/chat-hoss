@@ -84,6 +84,9 @@ export async function POST(request: Request) {
         const argumentsString = toolCall.function.arguments.trim()
         const parsedArgs = JSON.parse(argumentsString)
 
+        console.log("Function:", functionName)
+        console.log("Arguments:", parsedArgs)
+
         // Find the schema detail that contains the function name
         const schemaDetail = schemaDetails.find(detail =>
           Object.values(detail.routeMap).includes(functionName)
@@ -101,15 +104,17 @@ export async function POST(request: Request) {
           throw new Error(`Path for function ${functionName} not found`)
         }
 
-        const path = pathTemplate.replace(/:(\w+)/g, (_, paramName) => {
-          const value = parsedArgs.parameters[paramName]
-          if (!value) {
-            throw new Error(
-              `Parameter ${paramName} not found for function ${functionName}`
-            )
-          }
-          return encodeURIComponent(value)
-        })
+        const path = pathTemplate
+          .replace(/:(\w+)/g, (_, paramName) => {
+            const requestBody = parsedArgs.requestBody || parsedArgs
+            const value =
+              requestBody.parameters?.[paramName] ?? requestBody[paramName]
+            if (!value) {
+              return ""
+            }
+            return encodeURIComponent(value)
+          })
+          .replace(/\/+/g, "/")
 
         if (!path) {
           throw new Error(`Path for function ${functionName} not found`)
@@ -148,7 +153,11 @@ export async function POST(request: Request) {
 
           const fullUrl = schemaDetail.url + path
 
-          const bodyContent = parsedArgs.requestBody || parsedArgs
+          const requestBody = parsedArgs.requestBody || parsedArgs
+          const bodyContent = requestBody.parameters || requestBody
+
+          console.log("Full URL:", fullUrl)
+          console.log("Request body:", bodyContent)
 
           const requestInit = {
             method: "POST",
@@ -167,9 +176,9 @@ export async function POST(request: Request) {
           }
         } else {
           // If the type is set to query
-          const queryParams = new URLSearchParams(
-            parsedArgs.parameters
-          ).toString()
+          const requestBody = parsedArgs.requestBody || parsedArgs
+          const queryParamsObj = requestBody.parameters || requestBody
+          const queryParams = new URLSearchParams(queryParamsObj).toString()
           const fullUrl =
             schemaDetail.url + path + (queryParams ? "?" + queryParams : "")
 
