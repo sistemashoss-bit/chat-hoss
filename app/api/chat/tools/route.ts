@@ -27,26 +27,52 @@ export async function POST(request: Request) {
   try {
     const profile = await getServerProfile()
 
+    const model = chatSettings.model || ""
+    console.log("Model:", model)
+    console.log("Profile keys:", {
+      openai_api_key: profile.openai_api_key ? "set" : "not set",
+      openrouter_api_key: profile.openrouter_api_key ? "set" : "not set"
+    })
+
     const isOpenRouter =
-      chatSettings.model?.includes("openrouter") ||
-      chatSettings.model?.includes("anthropic") ||
-      chatSettings.model?.includes("google")
+      model.includes("openrouter") ||
+      model.includes("anthropic") ||
+      model.includes("google") ||
+      model.includes("claude") ||
+      model.includes("gemini") ||
+      model.includes("minimax") ||
+      model.includes("mistral") ||
+      model.includes("groq") ||
+      model.includes("perplexity") ||
+      model.startsWith("/")
+
+    console.log("isOpenRouter:", isOpenRouter)
 
     let client: OpenAI
 
     if (isOpenRouter) {
-      checkApiKey(profile.openrouter_api_key, "OpenRouter")
+      if (!profile.openrouter_api_key) {
+        throw new Error(
+          "OpenRouter API Key not found. Please set it in profile settings."
+        )
+      }
       client = new OpenAI({
-        apiKey: profile.openrouter_api_key || "",
+        apiKey: profile.openrouter_api_key,
         baseURL: "https://openrouter.ai/api/v1"
       })
     } else {
-      checkApiKey(profile.openai_api_key, "OpenAI")
+      if (!profile.openai_api_key) {
+        throw new Error(
+          "OpenAI API Key not found. Please set it in profile settings."
+        )
+      }
       client = new OpenAI({
-        apiKey: profile.openai_api_key || "",
+        apiKey: profile.openai_api_key,
         organization: profile.openai_organization_id
       })
     }
+
+    console.log("Client initialized successfully")
 
     let allTools: OpenAI.Chat.Completions.ChatCompletionTool[] = []
     let allRouteMaps = {}
