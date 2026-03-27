@@ -6,6 +6,8 @@ import { OpenAIStream, StreamingTextResponse } from "ai"
 import OpenAI from "openai"
 import { ChatCompletionCreateParamsBase } from "openai/resources/chat/completions.mjs"
 
+console.log("=== TOOLS ROUTE LOADED ===")
+
 export async function POST(request: Request) {
   console.log("=== /api/chat/tools called ===")
 
@@ -242,11 +244,18 @@ export async function POST(request: Request) {
 
     return new StreamingTextResponse(stream)
   } catch (error: any) {
+    console.error("=== TOOLS ROUTE ERROR ===")
     console.error(error)
-    const errorMessage = error.error?.message || "An unexpected error occurred"
+    console.error("Error stack:", error.stack)
+    const errorMessage =
+      error.message || error.error?.message || "An unexpected error occurred"
     const errorCode = error.status || 500
-    return new Response(JSON.stringify({ message: errorMessage }), {
-      status: errorCode
-    })
+    return new Response(
+      JSON.stringify({ message: errorMessage, stack: error.stack }),
+      {
+        status: errorCode,
+        headers: { "Content-Type": "application/json" }
+      }
+    )
   }
 }

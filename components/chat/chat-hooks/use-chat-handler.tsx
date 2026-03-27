@@ -274,8 +274,10 @@ export const useChatHandler = () => {
 
       console.log("selectedTools:", selectedTools)
       console.log("selectedTools.length:", selectedTools.length)
+      console.log("selectedTools[0]:", selectedTools[0])
 
       if (selectedTools.length > 0) {
+        console.log("=== USING TOOLS API ===")
         setToolInUse("Tools")
 
         const formattedMessages = await buildFinalMessages(
