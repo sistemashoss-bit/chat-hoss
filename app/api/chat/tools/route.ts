@@ -27,12 +27,26 @@ export async function POST(request: Request) {
   try {
     const profile = await getServerProfile()
 
-    checkApiKey(profile.openai_api_key, "OpenAI")
+    const isOpenRouter =
+      chatSettings.model?.includes("openrouter") ||
+      chatSettings.model?.includes("anthropic") ||
+      chatSettings.model?.includes("google")
 
-    const openai = new OpenAI({
-      apiKey: profile.openai_api_key || "",
-      organization: profile.openai_organization_id
-    })
+    let client: OpenAI
+
+    if (isOpenRouter) {
+      checkApiKey(profile.openrouter_api_key, "OpenRouter")
+      client = new OpenAI({
+        apiKey: profile.openrouter_api_key || "",
+        baseURL: "https://openrouter.ai/api/v1"
+      })
+    } else {
+      checkApiKey(profile.openai_api_key, "OpenAI")
+      client = new OpenAI({
+        apiKey: profile.openai_api_key || "",
+        organization: profile.openai_organization_id
+      })
+    }
 
     let allTools: OpenAI.Chat.Completions.ChatCompletionTool[] = []
     let allRouteMaps = {}
@@ -74,7 +88,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const firstResponse = await openai.chat.completions.create({
+    const firstResponse = await client.chat.completions.create({
       model: chatSettings.model as ChatCompletionCreateParamsBase["model"],
       messages,
       tools: allTools.length > 0 ? allTools : undefined
@@ -234,7 +248,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const secondResponse = await openai.chat.completions.create({
+    const secondResponse = await client.chat.completions.create({
       model: chatSettings.model as ChatCompletionCreateParamsBase["model"],
       messages,
       stream: true
