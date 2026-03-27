@@ -121,7 +121,7 @@ export async function POST(request: Request) {
 
         if (isRequestInBody) {
           // If the type is set to body
-          let headers = {
+          let headers: Record<string, string> = {
             "Content-Type": "application/json"
           }
 
@@ -173,12 +173,12 @@ export async function POST(request: Request) {
           const fullUrl =
             schemaDetail.url + path + (queryParams ? "?" + queryParams : "")
 
-          let headers = {}
+          let headers: Record<string, string> = {}
 
           // Check if custom headers are set
           const customHeaders = schemaDetail.headers
           if (customHeaders && typeof customHeaders === "string") {
-            headers = JSON.parse(customHeaders)
+            headers = JSON.parse(customHeaders) as Record<string, string>
           }
 
           // Inject user's Supabase token for MCP tools
