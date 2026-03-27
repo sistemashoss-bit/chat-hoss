@@ -140,6 +140,12 @@ export async function POST(request: Request) {
             }
           }
 
+          // Inject user's Supabase token for MCP tools
+          const authHeader = request.headers.get("Authorization")
+          if (authHeader && schemaDetail.url.includes("/mcp/")) {
+            headers["Authorization"] = authHeader
+          }
+
           const fullUrl = schemaDetail.url + path
 
           const bodyContent = parsedArgs.requestBody || parsedArgs
@@ -173,6 +179,12 @@ export async function POST(request: Request) {
           const customHeaders = schemaDetail.headers
           if (customHeaders && typeof customHeaders === "string") {
             headers = JSON.parse(customHeaders)
+          }
+
+          // Inject user's Supabase token for MCP tools
+          const authHeader = request.headers.get("Authorization")
+          if (authHeader && schemaDetail.url.includes("/mcp/")) {
+            headers["Authorization"] = authHeader
           }
 
           const response = await fetch(fullUrl, {
